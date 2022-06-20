@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <array>
+#include <set>
 
 #define enemy 3 - player
 
@@ -16,15 +17,7 @@ int player;
 const int SIZE = 15;
 std::array<std::array<int, SIZE>, SIZE> board;
 
-class state {
-public :
-    int x, y;
-    int alpha, beta;
-
-    state(int xx = 0, int yy = 0) : x(xx), y(yy), alpha((int)-1e15), beta((int)1e15) {}
-};
-
-void getvalue(int aimx, int aimy) {
+int getvalue(int aimx, int aimy) {
     int newval= 0;
 
     int atknum[3][3] = {0};  //左上、上、右上 | 左、無作用、右 | 左下、下、右下 
@@ -32,7 +25,7 @@ void getvalue(int aimx, int aimy) {
         for (int j = -1; j <= 1; j ++) {
             for (int k = 1; k <= 4; k ++) {
                 if (aimx + k * i < 0 || aimx + k * i >= SIZE || aimy + k * j < 0 || aimy + k * j >= SIZE)
-                    continue;
+                    break;
 
                 if (board[aimx + k * i][aimy + k * j] == player)
                     atknum[aimx + 1][aimy + 1] ++;
@@ -54,7 +47,7 @@ void getvalue(int aimx, int aimy) {
         case 6:
         case 5:
         case 4:
-            newval += 100000;
+            newval += 1000000;
             break;
         
         case 3: {
@@ -400,7 +393,7 @@ void getvalue(int aimx, int aimy) {
         case 6:
         case 5:
         case 4:
-            newval += 100000;
+            newval += 1000000;
             break;
         
         case 3: {
@@ -740,6 +733,934 @@ void getvalue(int aimx, int aimy) {
     }
     //垂直線
 
+    int lu1_x = aimx - atknum[0][0] - 1, lu2_x = lu1_x - 1, lu3_x = lu2_x - 1;
+    int lu1_y = aimy - atknum[0][0] - 1, lu2_y = lu1_y - 1, lu3_y = lu2_y - 1;  //左上
+    int ru1_x = aimx + atknum[0][2] + 1, ru2_x = ru1_x + 1, ru3_x = ru2_x + 1;
+    int ru1_y = aimy - atknum[0][2] - 1, ru2_y = ru1_y - 1, ru3_y = ru2_y - 1;  //右上
+    int ld1_x = aimx - atknum[2][0] - 1, ld2_x = ld1_x - 1, ld3_x = ld2_x - 1;
+    int ld1_y = aimy + atknum[2][0] + 1, ld2_y = ld1_y + 1, ld3_y = ld2_y + 1;  //左下
+    int rd1_x = aimx + atknum[2][2] + 1, rd2_x = rd1_x + 1, rd3_x = rd2_x + 1;
+    int rd1_y = aimy + atknum[2][2] + 1, rd2_y = rd2_y + 1, rd3_y = rd2_y + 1;  //右下
+
+    switch (atknum[0][0] + atknum[2][2]) {
+        case 8:
+        case 7:
+        case 6:
+        case 5:
+        case 4:
+            newval += 1000000;
+            break;
+        
+        case 3: {
+            if (lu1_x < 0 || lu1_y < 0) {\
+                if (rd1_x >= SIZE || rd1_y >= SIZE)
+                    break;
+                  // |XXXX|
+
+                if (!board[rd1_x][rd1_y]) 
+                    newval += 10000;
+                  // |XXXX_
+                break;
+            }
+            else if (rd1_x >= SIZE || rd1_y >= SIZE) {
+                if (!board[lu1_x][lu1_y])
+                    newval += 10000;
+                  // _XXXX|
+                break;
+            }
+
+            int lu1 = board[lu1_x][lu1_y], rd1 = board[rd1_x][rd1_y];
+            if (lu1 + rd1 == enemy) {
+                newval += 10000;
+                break;
+            }  // OXXXX_
+            else if (!(lu1 + rd1)) {
+                newval += 20000;
+                break;
+            }  // _XXXX_
+
+            break;
+        }
+
+        case 2: {
+            if (lu1_x < 0 || lu1_y < 0) {
+                if (rd1_x >= SIZE || rd1_y >= SIZE)
+                    break;
+                  // |XXX|
+
+                if (rd2_x >= SIZE || rd2_y >= SIZE)
+                    break;
+                  // |XXX_|
+
+                if (!board[rd1_x][rd1_y] && !board[rd2_x][rd2_y]) {
+                    newval += 5500;
+                    break;
+                }  // |XXX__
+                else if (!board[rd1_x][rd1_y] && board[rd2_x][rd2_y] == player) {
+                    newval += 7000;
+                    break;
+                }  // |XXX_X
+                break;
+
+            }
+            else if (rd1_x >= SIZE || rd1_y >= SIZE) {
+                if (lu2_x < 0 || lu2_y < 0)
+                    break;
+                  // |_XXX|
+
+                if (!board[lu1_x][lu1_y] && !board[lu2_x][lu2_y]) {
+                    newval += 5500;
+                    break;
+                }  // __XXX|
+                else if (!board[lu1_x][lu1_y] && board[lu2_x][lu2_y] == player) {
+                    newval += 7000;
+                    break;
+                }  // X_XXX|
+                break;
+                
+            }
+
+            int lu1 = board[lu1_x][lu1_y], rd1 = board[rd1_x][rd1_y];
+            if (!lu1 && !rd1) {
+
+                if (lu2_x < 0 || lu2_y) {
+                    if (rd2_x >= SIZE || rd2_y >= SIZE) {
+                        newval += 5500;
+                        break;
+                    }  // |_XXX_|
+  
+                    int rd2 = board[rd2_x][rd2_y];
+                    if (!rd2)
+                        newval += 6200;  // |_XXX__
+                    else if (rd2 == player)
+                        newval += 7000;  // |_XXX_X
+                    else 
+                        newval += 5500;  // |_XXX_O
+                    break;
+                }  // |_XXX_?
+                else if (rd2_x >= SIZE || rd2_y >= SIZE) {
+
+                    int lu2 = board[lu2_x][lu2_y];
+                    if (!lu2) 
+                        newval += 6200;  // __XXX_|
+                    else if (lu2 == player)
+                        newval += 7000;  // X_XXX_|
+                    else 
+                        newval += 5500;  // O_XXX_|
+                    break;
+                }  // ?_XXX_|
+
+                int lu2 = board[lu2_x][lu2_y], rd2 = board[rd2_x][rd2_y];
+                if (lu2 == player && rd2 == player) {
+                    newval += 20000;
+                    break;
+                }  // X_XXX_X
+                else if (lu2 == enemy && rd2 == enemy) {
+                    newval += 5500;
+                    break;
+                }  // O_XXX_O
+ 
+                int sum2 = lu2 + rd2;
+                if (!sum2)
+                    newval += 6500;
+                else if (sum2 == player)
+                    newval += 7100;
+                else if (sum2 == enemy)
+                    newval += 6200;
+                else if (sum2 == 2 * enemy)
+                    newval += 7000;
+                break;
+                // ?_XXX_?
+            
+            }
+            else if (lu1 == enemy && !rd1) {
+                if (rd2_x >= SIZE || rd2_y >= SIZE)
+                    break;
+                  // OXXX_|
+
+                int rd2 = board[rd2_x][rd2_y];
+                if (!rd2)
+                    newval += 5500;  // OXXX__
+                else if (rd2 == player)
+                    newval += 7000;  // OXXX_X
+                break;
+
+            }  // OXXX_?
+            else if (rd1 == enemy && !lu1) {
+                if (lu2_x < 0 || lu2_y < 0)
+                    break;
+                  // |_XXXO
+
+                int lu2 = board[lu2_x][lu2_y];
+                if (!lu2)
+                    newval += 5500;  // __XXXO
+                else if (lu2 == player)
+                    newval += 7000;  // X_XXXO
+                break;
+
+            }  // ?_XXXO
+           
+            break;
+        }
+
+        case 1: {
+            if (lu1_x < 0 || lu1_y < 0) {
+                if (rd1_x >= SIZE || rd1_y >= SIZE)
+                    break;
+                  // |XX|
+
+                if (!board[rd1_x][rd1_y]) {
+                    if (rd2_x >= SIZE || rd2_y >= SIZE)
+                        break;
+                      // |XX_|
+
+                    if (!board[rd2_x][rd2_y]) {
+                        if (rd3_x >= SIZE || rd3_y >= SIZE)
+                            break;
+                          // |XX__|
+
+                        if (!board[rd3_x][rd3_y]) {
+                            newval += 2000;
+                            break;
+                        }  // |XX___
+                        else if (board[rd3_x][rd3_y] == player) {
+                            newval += 5500;
+                            break;
+                        }  // |XX__X
+
+                    }  // |XX__?
+                    else if (board[rd2_x][rd2_y] == player) {
+                        if (rd3_x >= SIZE || rd3_y >= SIZE)
+                            break;
+                          // |XX_X|
+
+                        if (!board[rd3_x][rd3_y]) {
+                            newval += 5500;
+                            break;
+                        }  // |XX_X_
+
+                    } 
+
+                }
+                break;
+            }  // |XX_??
+            else if (rd1_x >= SIZE || rd1_y >= SIZE) {
+
+                if (!board[lu1_x][lu1_y]) {
+                    if (rd2_x >= SIZE || rd2_y >= SIZE)
+                        break;
+                      // |_XX|
+
+                    if (!board[lu2_x][lu2_y]) {
+                        if (rd3_x >= SIZE || rd3_y >= SIZE)
+                            break;
+                          // |__XX|
+
+                        if (!board[lu3_x][lu3_y]) {
+                            newval += 2000;
+                            break;
+                        }  // ___XX|
+                        else if (board[lu3_x][lu3_y] == player) {
+                            newval += 5500;
+                            break;
+                        }  // X__XX|
+
+                    }
+                    else if (board[lu2_x][lu2_y] == player) {
+                        if (lu3_x < 0 || lu3_y < 0)
+                            break;
+                          // |X_XX|
+
+                        if (!board[lu3_x][lu3_y]) {
+                            newval += 5500;
+                            break;
+                        }  // _X_XX|
+                    }
+
+                }
+                break;
+            }
+        
+            int lu1 = board[lu1_x][lu1_y], rd1 = board[rd1_x][rd1_y];
+            if (!lu1 && !rd1) {
+
+                if (lu2_x < 0 || lu2_y < 0) {
+                    if (rd2_x >= SIZE || rd2_y >= SIZE)
+                        break;
+                      // |_XX_|
+                    
+                    int rd2 = board[rd2_x][rd2_y], rd3 = board[rd3_x][rd3_y];
+                    if (!rd2) {
+                        if (rd3_x >= SIZE || rd3_y >= SIZE) {
+                            newval += 2000;
+                            break;
+                        }  // |_XX__|
+
+                        if (!rd3) 
+                            newval += 3000;  // |_XX___
+                        else if (rd3 == player)
+                            newval += 5500;  // |_XX__X
+                        else 
+                            newval += 2000;  // |_XX__O
+                        break;
+
+                    }
+                    else if (rd2 == player) {
+                        if (rd3_x >= SIZE || rd3_y >= SIZE) {
+                            newval += 5500;
+                            break;
+                        }  // |_XX_X|
+
+                        if (!rd3)
+                            newval += 6000;  // |_XX_X_
+                        else if (rd3 == enemy)
+                            newval += 5500;  // |_XX_XO
+                        break;
+
+                    }
+                    
+                    break;
+                }  // |_XX_??
+                else if (rd2_x >= SIZE || rd2_y >= SIZE) {
+                    
+                    int lu2 = board[lu2_x][lu2_y], lu3 = board[lu3_x][lu3_y];
+                    if (!lu2) {
+                        if (lu3_x < 0 || lu3_y < 0) {
+                            newval += 2000;
+                            break;
+                        }  // |__XX_|
+                        
+                        if (!lu3)
+                            newval += 3000;  // ___XX_|
+                        else if (lu3 == player)
+                            newval += 5500;  // X__XX_|
+                        else 
+                            newval += 2000;  // O__XX_|
+                        break;
+
+                    }
+                    else if (lu2 == player) {
+                        if (rd3_x >= SIZE || rd3_y >= SIZE) {
+                            newval += 5500;
+                            break;
+                        }  // |X_XX_|
+
+                        if (!lu3)
+                            newval += 6000;  // _X_XX_|
+                        else if (lu3 == enemy)
+                            newval += 5500;  // OX_XX_|
+                        break;
+
+                    }
+                    
+                    break;
+                }
+
+                int lu2 = board[lu2_x][lu2_y], rd2 = board[rd2_x][rd2_y], sum2 = lu2 + rd2;
+                if (!lu2 && !rd2) {
+                    if (lu3_x < 0 || lu3_y < 0) {
+                        if (rd3_x >= SIZE || rd3_y >= SIZE) {
+                            newval += 3500;
+                            break;
+                        }  // |__XX__|
+
+                        int rd3 = board[rd3_x][rd3_y];
+                        if (!rd3)
+                            newval += 4000;  // |__XX___
+                        else if (rd3 == player)
+                            newval += 5700;  // |__XX__X
+                        else 
+                            newval += 3500;  // |__XX__O
+                        break;
+                        // |__XX__?
+                    }
+                    else if (rd3_x >= SIZE || rd3_y >= SIZE) {
+
+                        int lu3 = board[lu3_x][lu3_y];
+                        if (!lu3)
+                            newval += 4000;  // ___XX__|
+                        else if (lu3 == player) 
+                            newval += 5700;  // X__XX__|
+                        else 
+                            newval += 3500;  // O__XX__|
+                        break;
+                        // ?__XX__|
+                    }
+
+                    int lu3 = board[lu3_x][lu3_y], rd3 = board[rd3_x][rd3_y], sum3 = lu3 + rd3;
+                    if (lu3 == enemy && rd3 == enemy) 
+                        newval += 3500;  // O__XX__O
+                    else if (!sum3)
+                        newval += 5000;  // ___XX___
+                    else if (sum3 == player)
+                        newval += 6100;  // X__XX___  or  ___XX__X
+                    else if (sum3 == enemy)
+                        newval += 4000;  // O__XX___  or  ___XX__O
+                    else if (sum3 == 3)
+                        newval += 5700;  // O__XX__X  or  X__XX__O
+
+                    break;
+                }  // ?__XX__?
+                else if (lu2 == player && rd2 == player) {
+                    if (lu3_x < 0 || lu3_y < 0) {
+                        newval += 6500;
+                        break;
+                    }  // |X_XX_X_
+                    if (rd3_x >= SIZE || rd3_y >= SIZE) {
+                        newval += 6500;
+                        break;
+                    }  // _X_XX_X|
+
+                    if (board[lu3_x][lu3_y] + board[rd3_x][rd3_y] == enemy)
+                        newval += 6500;  // OX_XX_X_  or  _X_XX_XO
+                    break;
+                }
+                else if (sum2 == player) {
+                    if (lu3_x < 0 || lu3_y < 0) {
+                        if (rd3_x >= SIZE || rd3_y >= SIZE) {
+                            newval += 5500;
+                            break;
+                        }  // |X_XX__|  or  |__XX_X|
+
+                        int lu3 = board[lu3_x][lu3_y], rd3 = board[rd3_x][rd3_y];
+                        if (lu2 + lu3 == player || rd2 + rd3 == player) {
+                            newval += 6300;
+                            break;
+                        }  // |__XX_X_  or  _X_XX__|
+                    }
+                    int sum3 = board[lu3_x][lu3_y] + board[rd3_x][rd3_y];
+                    if (sum3 == 2 * enemy) {
+                        newval += 5500;
+                        break;
+                    }  // OX_XX__O  or  O__XX_XO
+                    else if ((lu2 == player && board[rd3_x][rd3_y] == enemy && !board[lu3_x][lu3_y]) || (rd2 == player && board[lu3_x][lu3_y] && !board[rd3_x][rd3_y])) {
+                        newval += 6300;
+                        break;
+                    }  // _X_XX__O  or  O__XX_X_
+
+                    int lu3 = board[lu3_x][lu3_y];
+                    if (!sum3)
+                        newval += 6300;  // _X_XX___  or  ___XX_X_
+                    else if (sum3 == player && lu3 + lu2 == player)
+                        newval += 6400;  // _X_XX__X  or  X__XX_X_
+                    else if (sum3 == enemy && lu2 + lu3 == 3)
+                        newval += 5500;  // OX_XX___  or  ___XX_XO
+                    else if (sum3 == enemy && lu2 + lu3 != 3)
+                        newval += 6300;  // O__XX_X_  or  _X_XX__O
+                    else if (sum3 == 3 && lu2 + lu3 == 3)
+                        newval += 6500;  // OX_XX__X  or  X__XX_XO  
+                    break;
+
+                }
+                else if (sum2 == enemy) {
+                    int lu3 = board[lu3_x][lu3_y], sum3 = board[lu3_x][lu3_y] + board[rd3_x][rd3_y];
+                    if (!sum3)
+                        newval += 3000;  // _O_XX___  or  ___XX_O_
+                    else if (sum3 == player && lu2 + lu3 != 3)
+                        newval += 5500;  // _O_XX__X  or  X__XX_O_
+                    else if (sum3 == enemy && lu2 + lu3 == enemy)
+                        newval += 2000;  // _O_XX__O  or  O__XX_O_
+                    break;
+
+                }
+                else if (sum2 == 3) {
+                    int lu3 = board[lu3_x][lu3_y], sum3 = board[lu3_x][lu3_y] + board[rd3_x][rd3_y];
+                    if (!sum3)
+                        newval += 6000;  // _O_XX_X_  or  _X_XX_O_
+                    else if (sum3 == enemy && lu2 + lu3 != player)
+                        newval += 5500;  // _O_XX_XO  or  OX_XX_O_
+                    break;
+
+                }
+
+                break;
+            }  // ??_XX_|
+            else if (lu1 == enemy && !rd1) {
+                if (rd2_x >= SIZE || rd2_y >= SIZE)
+                    break;
+                  // OXX_|
+
+                int sum2 = board[rd2_x][rd2_y] + board[rd3_x][rd3_y];
+                if (sum2 == player)
+                    newval += 5500;  // OXX_X_  or  OXX__X
+                else if (!sum2)
+                    newval += 2000;  // OXX___ 
+                break;
+
+            }  //OXX_??
+            else if (rd1 == enemy && !lu1) {
+                int sum2 = board[lu2_x][lu2_y] + board[lu3_x][lu3_y];
+                if (sum2 == player)
+                    newval += 5500;  // _X_XXO  or  X__XXO
+                else if (!sum2)
+                    newval += 2000;  // ___XXO
+                break;
+            }
+        
+            break;
+        }
+    }  
+    //左上到右下的斜線
+
+    switch (atknum[2][0] + atknum[0][2]) {
+        case 8:
+        case 7:
+        case 6:
+        case 5:
+        case 4:
+            newval += 1000000;
+            break;
+        
+        case 3: {
+            if (ld1_x < 0 || ld1_y < 0) {\
+                if (ru1_x >= SIZE || ru1_y >= SIZE)
+                    break;
+                  // |XXXX|
+
+                if (!board[ru1_x][ru1_y]) 
+                    newval += 10000;
+                  // |XXXX_
+                break;
+            }
+            else if (ru1_x >= SIZE || ru1_y >= SIZE) {
+                if (!board[ld1_x][ld1_y])
+                    newval += 10000;
+                  // _XXXX|
+                break;
+            }
+
+            int ld1 = board[ld1_x][ld1_y], ru1 = board[ru1_x][ru1_y];
+            if (ld1 + ru1 == enemy) {
+                newval += 10000;
+                break;
+            }  // OXXXX_
+            else if (!(ld1 + ru1)) {
+                newval += 20000;
+                break;
+            }  // _XXXXO
+
+            break;
+        }
+
+        case 2: {
+            if (ld1_x < 0 || ld1_y < 0) {
+                if (ru1_x >= SIZE || ru1_y >= SIZE)
+                    break;
+                  // |XXX|
+
+                if (ru2_x >= SIZE || ru2_y >= SIZE)
+                    break;
+                  // |XXX_|
+
+                if (!board[ru1_x][ru1_y] && !board[ru2_x][ru2_y]) {
+                    newval += 5500;
+                    break;
+                }  // |XXX__
+                else if (!board[ru1_x][ru1_y] && board[ru2_x][ru2_y] == player) {
+                    newval += 7000;
+                    break;
+                }  // |XXX_X
+                break;
+
+            }
+            else if (ru1_x >= SIZE || ru1_y >= SIZE) {
+                if (ld2_x < 0 || ld2_y < 0)
+                    break;
+                  // |_XXX|
+
+                if (!board[ld1_x][ld1_y] && !board[ld2_x][ld2_y]) {
+                    newval += 5500;
+                    break;
+                }  // __XXX|
+                else if (!board[ld1_x][ld1_y] && board[ld2_x][ld2_y] == player) {
+                    newval += 7000;
+                    break;
+                }  // X_XXX|
+                break;
+                
+            }
+
+            int ld1 = board[ld1_x][ld1_y], ru1 = board[ru1_x][ru1_y];
+            if (!ld1 && !ru1) {
+
+                if (ld2_x < 0 || ld2_y) {
+                    if (ru2_x >= SIZE || ru2_y >= SIZE) {
+                        newval += 5500;
+                        break;
+                    }  // |_XXX_|
+  
+                    int ru2 = board[ru2_x][ru2_y];
+                    if (!ru2)
+                        newval += 6200;  // |_XXX__
+                    else if (ru2 == player)
+                        newval += 7000;  // |_XXX_X
+                    else 
+                        newval += 5500;  // |_XXX_O
+                    break;
+                }  // |_XXX_?
+                else if (ru2_x >= SIZE || ru2_y >= SIZE) {
+
+                    int ld2 = board[ld2_x][ld2_y];
+                    if (!ld2) 
+                        newval += 6200;  // __XXX_|
+                    else if (ld2 == player)
+                        newval += 7000;  // X_XXX_|
+                    else 
+                        newval += 5500;  // O_XXX_|
+                    break;
+                }  // ?_XXX_|
+
+                int ld2 = board[ld2_x][ld2_y], ru2 = board[ru2_x][ru2_y];
+                if (ld2 == player && ru2 == player) {
+                    newval += 20000;
+                    break;
+                }  // X_XXX_X
+                else if (ld2 == enemy && ru2 == enemy) {
+                    newval += 5500;
+                    break;
+                }  // O_XXX_O
+ 
+                int sum2 = ld2 + ru2;
+                if (!sum2)
+                    newval += 6500;
+                else if (sum2 == player)
+                    newval += 7100;
+                else if (sum2 == enemy)
+                    newval += 6200;
+                else if (sum2 == 2 * enemy)
+                    newval += 7000;
+                break;
+                // ?_XXX_?
+            
+            }
+            else if (ld1 == enemy && !ru1) {
+                if (ru2_x >= SIZE || ru2_y >= SIZE)
+                    break;
+                  // OXXX_|
+
+                int ru2 = board[ru2_x][ru2_y];
+                if (!ru2)
+                    newval += 5500;  // OXXX__
+                else if (ru2 == player)
+                    newval += 7000;  // OXXX_X
+                break;
+
+            }  // OXXX_?
+            else if (ru1 == enemy && !ld1) {
+                if (ld2_x < 0 || ld2_y < 0)
+                    break;
+                  // |_XXXO
+
+                int ld2 = board[ld2_x][ld2_y];
+                if (!ld2)
+                    newval += 5500;  // __XXXO
+                else if (ld2 == player)
+                    newval += 7000;  // X_XXXO
+                break;
+
+            }  // ?_XXXO
+           
+            break;
+        }
+
+        case 1: {
+            if (ld1_x < 0 || ld1_y < 0) {
+                if (ru1_x >= SIZE || ru1_y >= SIZE)
+                    break;
+                  // |XX|
+
+                if (!board[ru1_x][ru1_y]) {
+                    if (ru2_x >= SIZE || ru2_y >= SIZE)
+                        break;
+                      // |XX_|
+
+                    if (!board[ru2_x][ru2_y]) {
+                        if (ru3_x >= SIZE || ru3_y >= SIZE)
+                            break;
+                          // |XX__|
+
+                        if (!board[ru3_x][ru3_y]) {
+                            newval += 2000;
+                            break;
+                        }  // |XX___
+                        else if (board[ru3_x][ru3_y] == player) {
+                            newval += 5500;
+                            break;
+                        }  // |XX__X
+
+                    }  // |XX__?
+                    else if (board[ru2_x][ru2_y] == player) {
+                        if (ru3_x >= SIZE || ru3_y >= SIZE)
+                            break;
+                          // |XX_X|
+
+                        if (!board[ru3_x][ru3_y]) {
+                            newval += 5500;
+                            break;
+                        }  // |XX_X_
+
+                    } 
+
+                }
+                break;
+            }  // |XX_??
+            else if (ru1_x >= SIZE || ru1_y >= SIZE) {
+
+                if (!board[ld1_x][ld1_y]) {
+                    if (ru2_x >= SIZE || ru2_y >= SIZE)
+                        break;
+                      // |_XX|
+
+                    if (!board[ld2_x][ld2_y]) {
+                        if (ru3_x >= SIZE || ru3_y >= SIZE)
+                            break;
+                          // |__XX|
+
+                        if (!board[ld3_x][ld3_y]) {
+                            newval += 2000;
+                            break;
+                        }  // ___XX|
+                        else if (board[ld3_x][ld3_y] == player) {
+                            newval += 5500;
+                            break;
+                        }  // X__XX|
+
+                    }
+                    else if (board[ld2_x][ld2_y] == player) {
+                        if (ld3_x < 0 || ld3_y < 0)
+                            break;
+                          // |X_XX|
+
+                        if (!board[ld3_x][ld3_y]) {
+                            newval += 5500;
+                            break;
+                        }  // _X_XX|
+                    }
+
+                }
+                break;
+            }
+        
+            int ld1 = board[ld1_x][ld1_y], ru1 = board[ru1_x][ru1_y];
+            if (!ld1 && !ru1) {
+
+                if (ld2_x < 0 || ld2_y < 0) {
+                    if (ru2_x >= SIZE || ru2_y >= SIZE)
+                        break;
+                      // |_XX_|
+                    
+                    int ru2 = board[ru2_x][ru2_y], ru3 = board[ru3_x][ru3_y];
+                    if (!ru2) {
+                        if (ru3_x >= SIZE || ru3_y >= SIZE) {
+                            newval += 2000;
+                            break;
+                        }  // |_XX__|
+
+                        if (!ru3) 
+                            newval += 3000;  // |_XX___
+                        else if (ru3 == player)
+                            newval += 5500;  // |_XX__X
+                        else 
+                            newval += 2000;  // |_XX__O
+                        break;
+
+                    }
+                    else if (ru2 == player) {
+                        if (ru3_x >= SIZE || ru3_y >= SIZE) {
+                            newval += 5500;
+                            break;
+                        }  // |_XX_X|
+
+                        if (!ru3)
+                            newval += 6000;  // |_XX_X_
+                        else if (ru3 == enemy)
+                            newval += 5500;  // |_XX_XO
+                        break;
+
+                    }
+                    
+                    break;
+                }  // |_XX_??
+                else if (ru2_x >= SIZE || ru2_y >= SIZE) {
+                    
+                    int ld2 = board[ld2_x][ld2_y], ld3 = board[ld3_x][ld3_y];
+                    if (!ld2) {
+                        if (ld3_x < 0 || ld3_y < 0) {
+                            newval += 2000;
+                            break;
+                        }  // |__XX_|
+                        
+                        if (!ld3)
+                            newval += 3000;  // ___XX_|
+                        else if (ld3 == player)
+                            newval += 5500;  // X__XX_|
+                        else 
+                            newval += 2000;  // O__XX_|
+                        break;
+
+                    }
+                    else if (ld2 == player) {
+                        if (ru3_x >= SIZE || ru3_y >= SIZE) {
+                            newval += 5500;
+                            break;
+                        }  // |X_XX_|
+
+                        if (!ld3)
+                            newval += 6000;  // _X_XX_|
+                        else if (ld3 == enemy)
+                            newval += 5500;  // OX_XX_|
+                        break;
+
+                    }
+                    
+                    break;
+                }
+
+                int ld2 = board[ld2_x][ld2_y], ru2 = board[ru2_x][ru2_y], sum2 = ld2 + ru2;
+                if (!ld2 && !ru2) {
+                    if (ld3_x < 0 || ld3_y < 0) {
+                        if (ru3_x >= SIZE || ru3_y >= SIZE) {
+                            newval += 3500;
+                            break;
+                        }  // |__XX__|
+
+                        int ru3 = board[ru3_x][ru3_y];
+                        if (!ru3)
+                            newval += 4000;  // |__XX___
+                        else if (ru3 == player)
+                            newval += 5700;  // |__XX__X
+                        else 
+                            newval += 3500;  // |__XX__O
+                        break;
+                        // |__XX__?
+                    }
+                    else if (ru3_x >= SIZE || ru3_y >= SIZE) {
+
+                        int ld3 = board[ld3_x][ld3_y];
+                        if (!ld3)
+                            newval += 4000;  // ___XX__|
+                        else if (ld3 == player) 
+                            newval += 5700;  // X__XX__|
+                        else 
+                            newval += 3500;  // O__XX__|
+                        break;
+                        // ?__XX__|
+                    }
+
+                    int ld3 = board[ld3_x][ld3_y], ru3 = board[ru3_x][ru3_y], sum3 = ld3 + ru3;
+                    if (ld3 == enemy && ru3 == enemy) 
+                        newval += 3500;  // O__XX__O
+                    else if (!sum3)
+                        newval += 5000;  // ___XX___
+                    else if (sum3 == player)
+                        newval += 6100;  // X__XX___  or  ___XX__X
+                    else if (sum3 == enemy)
+                        newval += 4000;  // O__XX___  or  ___XX__O
+                    else if (sum3 == 3)
+                        newval += 5700;  // O__XX__X  or  X__XX__O
+
+                    break;
+                }  // ?__XX__?
+                else if (ld2 == player && ru2 == player) {
+                    if (ld3_x < 0 || ld3_y < 0) {
+                        newval += 6500;
+                        break;
+                    }  // |X_XX_X_
+                    if (ru3_x >= SIZE || ru3_y >= SIZE) {
+                        newval += 6500;
+                        break;
+                    }  // _X_XX_X|
+
+                    if (board[ld3_x][ld3_y] + board[ru3_x][ru3_y] == enemy)
+                        newval += 6500;  // OX_XX_X_  or  _X_XX_XO
+                    break;
+                }
+                else if (sum2 == player) {
+                    if (ld3_x < 0 || ld3_y < 0) {
+                        if (ru3_x >= SIZE || ru3_y >= SIZE) {
+                            newval += 5500;
+                            break;
+                        }  // |X_XX__|  or  |__XX_X|
+
+                        int ld3 = board[ld3_x][ld3_y], ru3 = board[ru3_x][ru3_y];
+                        if (ld2 + ld3 == player || ru2 + ru3 == player) {
+                            newval += 6300;
+                            break;
+                        }  // |__XX_X_  or  _X_XX__|
+                    }
+                    int sum3 = board[ld3_x][ld3_y] + board[ru3_x][ru3_y];
+                    if (sum3 == 2 * enemy) {
+                        newval += 5500;
+                        break;
+                    }  // OX_XX__O  or  O__XX_XO
+                    else if ((ld2 == player && board[ru3_x][ru3_y] == enemy && !board[ld3_x][ld3_y]) || (ru2 == player && board[ld3_x][ld3_y] && !board[ru3_x][ru3_y])) {
+                        newval += 6300;
+                        break;
+                    }  // _X_XX__O  or  O__XX_X_
+
+                    int ld3 = board[ld3_x][ld3_y];
+                    if (!sum3)
+                        newval += 6300;  // _X_XX___  or  ___XX_X_
+                    else if (sum3 == player && ld3 + ld2 == player)
+                        newval += 6400;  // _X_XX__X  or  X__XX_X_
+                    else if (sum3 == enemy && ld2 + ld3 == 3)
+                        newval += 5500;  // OX_XX___  or  ___XX_XO
+                    else if (sum3 == enemy && ld2 + ld3 != 3)
+                        newval += 6300;  // O__XX_X_  or  _X_XX__O
+                    else if (sum3 == 3 && ld2 + ld3 == 3)
+                        newval += 6500;  // OX_XX__X  or  X__XX_XO  
+                    break;
+
+                }
+                else if (sum2 == enemy) {
+                    int ld3 = board[ld3_x][ld3_y], sum3 = board[ld3_x][ld3_y] + board[ru3_x][ru3_y];
+                    if (!sum3)
+                        newval += 3000;  // _O_XX___  or  ___XX_O_
+                    else if (sum3 == player && ld2 + ld3 != 3)
+                        newval += 5500;  // _O_XX__X  or  X__XX_O_
+                    else if (sum3 == enemy && ld2 + ld3 == enemy)
+                        newval += 2000;  // _O_XX__O  or  O__XX_O_
+                    break;
+
+                }
+                else if (sum2 == 3) {
+                    int ld3 = board[ld3_x][ld3_y], sum3 = board[ld3_x][ld3_y] + board[ru3_x][ru3_y];
+                    if (!sum3)
+                        newval += 6000;  // _O_XX_X_  or  _X_XX_O_
+                    else if (sum3 == enemy && ld2 + ld3 != player)
+                        newval += 5500;  // _O_XX_XO  or  OX_XX_O_
+                    break;
+
+                }
+
+                break;
+            }  // ??_XX_|
+            else if (ld1 == enemy && !ru1) {
+                if (ru2_x >= SIZE || ru2_y >= SIZE)
+                    break;
+                  // OXX_|
+
+                int sum2 = board[ru2_x][ru2_y] + board[ru3_x][ru3_y];
+                if (sum2 == player)
+                    newval += 5500;  // OXX_X_  or  OXX__X
+                else if (!sum2)
+                    newval += 2000;  // OXX___ 
+                break;
+
+            }  //OXX_??
+            else if (ru1 == enemy && !ld1) {
+                int sum2 = board[ld2_x][ld2_y] + board[ld3_x][ld3_y];
+                if (sum2 == player)
+                    newval += 5500;  // _X_XXO  or  X__XXO
+                else if (!sum2)
+                    newval += 2000;  // ___XXO
+                break;
+            }
+        
+            break;
+        }
+    }  
+    //左下到右上的斜線
 
     int defnum[3][3] = {0};  //左上、上、右上 | 左、無作用、右 | 左下、下、右下 
     for (int i = -1; i <= 1; i ++) {
@@ -756,10 +1677,97 @@ void getvalue(int aimx, int aimy) {
         }
     }
 
+    switch(defnum[1][0] + defnum[1][2]) {
+        case 8:
+        case 7:
+        case 6:
+        case 5:
+        case 4:
+            newval += 200000;
+            break;
+        case 3:
+            newval += 100000;
+            break;
+        case 2:
+        case 1:
+            newval += 500;
+            break;
+    }
+    //水平線
+
+    switch(defnum[0][1] + defnum[2][1]) {
+        case 8:
+        case 7:
+        case 6:
+        case 5:
+        case 4:
+            newval += 200000;
+            break;
+        case 3:
+            newval += 100000;
+            break;
+        case 2:
+        case 1:
+            newval += 500;
+            break;
+    }
+    //鉛直線
+
+    switch(defnum[0][0] + defnum[2][2]) {
+        case 8:
+        case 7:
+        case 6:
+        case 5:
+        case 4:
+            newval += 200000;
+            break;
+        case 3:
+            newval += 100000;
+            break;
+        case 2:
+        case 1:
+            newval += 500;
+            break;
+    }
+    //左上到右下的斜線
+
+    switch(defnum[0][2] + defnum[2][0]) {
+        case 8:
+        case 7:
+        case 6:
+        case 5:
+        case 4:
+            newval += 200000;
+            break;
+        case 3:
+            newval += 100000;
+            break;
+        case 2:
+        case 1:
+            newval += 500;
+            break;
+    }
+    //左下到右上的斜線
+
+    return newval;
 }
 // 算完後放二維陣列，不然每次都要重算
 
+class state {
+    int x, y;
+    int value;
 
+    std::set<state *> child;
+
+    state(int xx, int yy, int val = 0) : x(xx), y(yy), value(val) {}
+
+    bool operator< (const state &a) const {
+        if (x == a.x)
+            return x > a.x;
+        
+        return y > a.y;
+    }
+};
 
 void read_board(std::ifstream& fin) {
     fin >> player;
@@ -771,22 +1779,7 @@ void read_board(std::ifstream& fin) {
 }
 
 void write_valid_spot(std::ofstream& fout) {
-    srand(time(NULL));
-    int x, y;          
     
-    while(true) {
-        // Choose a random spot.
-        int x = (rand() % SIZE);
-        int y = (rand() % SIZE);
-
-        
-        if (board[x][y] == EMPTY) {
-            fout << x << " " << y << std::endl;
-            // Remember to flush the output to ensure the last action is written to file.
-            fout.flush();
-        }
-    }
-    // Keep updating the output until getting killed. 6
 }
 // Remember to flush the output to ensure the last action is written to file.
 // fout.flush();
